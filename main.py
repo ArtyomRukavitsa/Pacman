@@ -37,6 +37,7 @@ class Wall(SuperClass):
     def draw(self):
         return '1'
 
+
 class Empty(SuperClass):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -53,39 +54,38 @@ class Creature(SuperClass):
     def draw(self):
         pass
 
-    def move(self):
-        pass
 
-
-class PacmanSprite(pygame.sprite.Sprite):
-    def __init__(self, board, image, x, y, v):
-        super().__init__(all_sprites)
-        self.x, self.y, self.v = x, y, v
-        self.image = load_image(image)
-        self.mw = self.image.get_width()
-        self.mh = self.image.get_height()
-        self.x = board.top + board.cell_size * x
-        self.y = board.left + board.cell_size * y
-        self.rect = self.image.get_rect().move(self.x, self.y)
-
-    def draw(self):
-        return 'P'
 
 
 class Pacman(Creature):
     def __init__(self, x, y, v):
         super().__init__(x, y, v)
 
+    def move(self, board, x, y):
+        new_x, new_y = self.x + x, self.y + y
+        try:
+            if isinstance(board.board[new_y][new_x], Empty):
+                board.board[new_y][new_x] = self
+                self.x, self.y = new_x, new_y
+                board.board[self.y][self.x] = Empty(self.x, self.y)
+            else:
+                pass
+        except IndexError:
+            pass
+        return board
+
+
 class Ghost(Creature):
     def __init__(self, x, y, v):
         super().__init__(x, y, v)
+
 
 class SmartGhost(Creature):
     def __init__(self, x, y, v):
         super().__init__(x, y, v)
 
 
-class GhostSprite(pygame.sprite.Sprite):
+class CreatureSprite(pygame.sprite.Sprite):
     def __init__(self, board, image, x, y, v):
         super().__init__(all_sprites)
         self.x, self.y, self.v = x, y, v
@@ -99,20 +99,10 @@ class GhostSprite(pygame.sprite.Sprite):
     def draw(self):
         return 'G'
 
-
-class SuperGhostSprite(pygame.sprite.Sprite):
-    def __init__(self, board, image, x, y, v):
-        super().__init__(all_sprites)
-        self.x, self.y, self.v = x, y, v
-        self.image = load_image(image)
-        self.mw = self.image.get_width()
-        self.mh = self.image.get_height()
+    def moveSprite(self, x, y):
         self.x = board.top + board.cell_size * x
         self.y = board.left + board.cell_size * y
         self.rect = self.image.get_rect().move(self.x, self.y)
-
-    def draw(self):
-        return 'G'
 
 
 class Board:
@@ -124,8 +114,6 @@ class Board:
         self.top = 10
         self.cell_size = 30
         Board.generateBoard(self)
-        """По умолчанию пустые клетки """
-        print(self.top)
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):
@@ -160,7 +148,6 @@ class Board:
         x = randint(0, self.width - 1)
         y = randint(0, self.height - 1)
         self.board[y][x] = Pacman(x, y, 1)
-        PacmanSprite(self, 'pacman.png', x, y, 1)
 
         for i in range(30):
             while not isinstance(self.board[y][x], Empty):
@@ -172,13 +159,11 @@ class Board:
             x = randint(0, self.width - 1)
             y = randint(0, self.height - 1)
         self.board[y][x] = Ghost(x, y, 1)
-        GhostSprite(self, 'ghost.png', x, y, 1)
 
         while not isinstance(self.board[y][x], Empty):
             x = randint(0, self.width - 1)
             y = randint(0, self.height - 1)
         self.board[y][x] = SmartGhost( x, y, 1)
-        SuperGhostSprite(self, 'smartghost.png', x, y, 1)
 
     def findPacman(self):
         for i in range(self.width):
@@ -199,18 +184,34 @@ class Board:
                     return self.board[j][i]
 
 
-
-
 pygame.init()
 size = width, height = 470, 470
 screen = pygame.display.set_mode(size)
 board = Board(15, 15)
 running = True
 pacman = board.findPacman()
+ghost = board.findGhost()
+smartghost = board.findSmartGhost()
+pacman_sprite = CreatureSprite(board, 'pacman.png', pacman.x, pacman.y, 1)
+ghost_sprite = CreatureSprite(board, 'ghost.png', ghost.x, ghost.y, 1)
+smartghost_sprite = CreatureSprite(board, 'smartghost.png', smartghost.x, smartghost.y, 1)
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                board = pacman.move(board, -1, 0)
+                pacman_sprite.moveSprite(pacman.x, pacman.y)
+            elif event.key == pygame.K_RIGHT:
+                board = pacman.move(board, 1, 0)
+                pacman_sprite.moveSprite(pacman.x, pacman.y)
+            elif event.key == pygame.K_UP:
+                board = pacman.move(board, 0, -1)
+                pacman_sprite.moveSprite(pacman.x, pacman.y)
+            elif event.key == pygame.K_DOWN:
+                board = pacman.move(board, 0, 1)
+                pacman_sprite.moveSprite(pacman.x, pacman.y)
     screen.fill((0, 0, 0))
     all_sprites.draw(screen)
     board.render()
