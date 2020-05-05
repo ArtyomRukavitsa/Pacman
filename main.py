@@ -1,8 +1,15 @@
 import pygame
 from random import randint
 import os
+import sys
 
 all_sprites = pygame.sprite.Group()
+
+
+def lose():
+    font = pygame.font.SysFont('Verdana', 60)
+    text = font.render("Вы проиграли", 1, (100, 255, 100))
+    screen.blit(text, (20, 30))
 
 
 # Функция, отвечающая за загрузку изображения
@@ -101,9 +108,12 @@ class SmartGhost(Creature):
             else: new_y -= 1
         else:
             new_x -= 1
+        if isinstance(board.board[new_y][new_x], Pacman):
+            return True  # Съел Пакмана
         board.board[new_y][new_x] = self
         board.board[self.y][self.x] = Empty(self.x, self.y)
         self.x, self.y = new_x, new_y
+        return False
 
 
 class CreatureSprite(pygame.sprite.Sprite):
@@ -204,40 +214,57 @@ class Board:
 
 
 def move_all_creatures(board, x, y):
-    pacman.move(board, x, y)
+    pacman.move(board, x, y)  # идея: можно вернуть True, если набрал определенное количество очков (или False)
     ghost.move(board)
-    smartghost.move(board)
+    result = smartghost.move(board)
+    if result:
+        return True
+
+
+def cycle():
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    if move_all_creatures(board, -1, 0):
+                        return 'LOST'
+                elif event.key == pygame.K_RIGHT:
+                    if move_all_creatures(board, 1, 0):
+                        return 'LOST'
+                elif event.key == pygame.K_UP:
+                    if move_all_creatures(board, 0, -1):
+                        return 'LOST'
+                elif event.key == pygame.K_DOWN:
+                    if move_all_creatures(board, 0, 1):
+                        return 'LOST'
+                pacman_sprite.moveSprite(pacman.x, pacman.y)
+                ghost_sprite.moveSprite(ghost.x, ghost.y)
+                smartghost_sprite.moveSprite(smartghost.x, smartghost.y)
+        screen.fill((0, 0, 0))
+        all_sprites.draw(screen)
+        board.render()
+        pygame.display.flip()
+
 
 
 pygame.init()
 size = width, height = 470, 470
 screen = pygame.display.set_mode(size)
 board = Board(15, 15)
-running = True
 pacman = board.findPacman()
 ghost = board.findGhost()
 smartghost = board.findSmartGhost()
 pacman_sprite = CreatureSprite(board, 'pacman.png', pacman.x, pacman.y, 1)
 ghost_sprite = CreatureSprite(board, 'ghost.png', ghost.x, ghost.y, 1)
 smartghost_sprite = CreatureSprite(board, 'smartghost.png', smartghost.x, smartghost.y, 1)
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                move_all_creatures(board, -1, 0)
-            elif event.key == pygame.K_RIGHT:
-                move_all_creatures(board, 1, 0)
-            elif event.key == pygame.K_UP:
-                move_all_creatures(board, 0, -1)
-            elif event.key == pygame.K_DOWN:
-                move_all_creatures(board, 0, 1)
-            pacman_sprite.moveSprite(pacman.x, pacman.y)
-            ghost_sprite.moveSprite(ghost.x, ghost.y)
-            smartghost_sprite.moveSprite(smartghost.x, smartghost.y)
-    screen.fill((0, 0, 0))
-    all_sprites.draw(screen)
-    board.render()
-    pygame.display.flip()
+
+
+result = cycle()
+if result == 'LOST':
+    while True:
+        lose()
+        pygame.display.flip()
 pygame.quit()
