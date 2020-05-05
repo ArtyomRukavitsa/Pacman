@@ -26,35 +26,21 @@ class SuperClass:
     def __init__(self, x, y):
         self.x, self.y = x, y
 
-    def draw(self):
-        pass
-
 
 class Wall(SuperClass):
     def __init__(self, x, y):
         super().__init__(x, y)
-
-    def draw(self):
-        return '1'
 
 
 class Empty(SuperClass):
     def __init__(self, x, y):
         super().__init__(x, y)
 
-    def draw(self):
-        return '0'
-
 
 class Creature(SuperClass):
     def __init__(self, x, y, v):
         super().__init__(x, y)
         self.v = v
-
-    def draw(self):
-        pass
-
-
 
 
 class Pacman(Creature):
@@ -63,29 +49,61 @@ class Pacman(Creature):
 
     def move(self, board, x, y):
         new_x, new_y = self.x + x, self.y + y
-        print(board.board[new_y][new_x], board.board[self.y][self.x])
         try:
             if isinstance(board.board[new_y][new_x], Empty):
                 board.board[new_y][new_x] = self
                 board.board[self.y][self.x] = Empty(self.x, self.y)
                 self.x, self.y = new_x, new_y
-                #board.board[self.y][self.x] = None
             else:
                 pass
         except IndexError:
             pass
-        print(board.board[new_y][new_x], board.board[self.y][self.x])
-        #return board.board
 
 
 class Ghost(Creature):
     def __init__(self, x, y, v):
         super().__init__(x, y, v)
 
+    def move(self, board):
+        # 0 - вверх, 1 - вправо, 2 - вниз, 3 - влево
+        while True:
+            new_x, new_y = self.x, self.y
+            direction = randint(0, 3)
+            if direction == 0:
+                new_y -= 1
+            elif direction == 1:
+                new_x += 1
+            elif direction == 2:
+                new_y += 1
+            else:
+                new_x -= 1
+            try:
+                if isinstance(board.board[new_y][new_x], Empty):
+                    board.board[new_y][new_x] = self
+                    board.board[self.y][self.x] = Empty(self.x, self.y)
+                    self.x, self.y = new_x, new_y
+                    break
+            except IndexError:
+                continue
+
 
 class SmartGhost(Creature):
     def __init__(self, x, y, v):
         super().__init__(x, y, v)
+
+    def move(self, board):
+        new_x, new_y = self.x, self.y
+        pacman = board.findPacman()
+        if pacman.x > self.x:
+            new_x += 1
+        elif pacman.x == self.x:
+            if pacman.y > self.y: new_y += 1
+            else: new_y -= 1
+        else:
+            new_x -= 1
+        board.board[new_y][new_x] = self
+        board.board[self.y][self.x] = Empty(self.x, self.y)
+        self.x, self.y = new_x, new_y
 
 
 class CreatureSprite(pygame.sprite.Sprite):
@@ -98,9 +116,6 @@ class CreatureSprite(pygame.sprite.Sprite):
         self.x = board.top + board.cell_size * x
         self.y = board.left + board.cell_size * y
         self.rect = self.image.get_rect().move(self.x, self.y)
-
-    def draw(self):
-        return 'G'
 
     def moveSprite(self, x, y):
         self.x = board.top + board.cell_size * x
@@ -129,8 +144,6 @@ class Board:
             for j in range(self.height):
                 arg = 1
                 color = (255, 255, 255)
-
-                #arg = 0 if self.board[j][i].draw() == 'P' else 1
                 pygame.draw.rect(screen, color,
                                  (self.left + i * self.cell_size,
                                   self.top + j * self.cell_size,
@@ -152,7 +165,7 @@ class Board:
         y = randint(0, self.height - 1)
         self.board[y][x] = Pacman(x, y, 1)
 
-        for i in range(0):
+        for i in range(30):
             while not isinstance(self.board[y][x], Empty):
                 x = randint(0, self.width - 1)
                 y = randint(0, self.height - 1)
@@ -189,6 +202,13 @@ class Board:
     def setBoard(self, board):
         self.board = board
 
+
+def move_all_creatures(board, x, y):
+    pacman.move(board, x, y)
+    ghost.move(board)
+    smartghost.move(board)
+
+
 pygame.init()
 size = width, height = 470, 470
 screen = pygame.display.set_mode(size)
@@ -206,14 +226,16 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
-                pacman.move(board, -1, 0)
+                move_all_creatures(board, -1, 0)
             elif event.key == pygame.K_RIGHT:
-                pacman.move(board, 1, 0)
+                move_all_creatures(board, 1, 0)
             elif event.key == pygame.K_UP:
-                pacman.move(board, 0, -1)
+                move_all_creatures(board, 0, -1)
             elif event.key == pygame.K_DOWN:
-                pacman.move(board, 0, 1)
+                move_all_creatures(board, 0, 1)
             pacman_sprite.moveSprite(pacman.x, pacman.y)
+            ghost_sprite.moveSprite(ghost.x, ghost.y)
+            smartghost_sprite.moveSprite(smartghost.x, smartghost.y)
     screen.fill((0, 0, 0))
     all_sprites.draw(screen)
     board.render()
