@@ -63,16 +63,19 @@ class Pacman(Creature):
 
     def move(self, board, x, y):
         new_x, new_y = self.x + x, self.y + y
+        print(board.board[new_y][new_x], board.board[self.y][self.x])
         try:
             if isinstance(board.board[new_y][new_x], Empty):
                 board.board[new_y][new_x] = self
-                self.x, self.y = new_x, new_y
                 board.board[self.y][self.x] = Empty(self.x, self.y)
+                self.x, self.y = new_x, new_y
+                #board.board[self.y][self.x] = None
             else:
                 pass
         except IndexError:
             pass
-        return board
+        print(board.board[new_y][new_x], board.board[self.y][self.x])
+        #return board.board
 
 
 class Ghost(Creature):
@@ -149,7 +152,7 @@ class Board:
         y = randint(0, self.height - 1)
         self.board[y][x] = Pacman(x, y, 1)
 
-        for i in range(30):
+        for i in range(0):
             while not isinstance(self.board[y][x], Empty):
                 x = randint(0, self.width - 1)
                 y = randint(0, self.height - 1)
@@ -183,6 +186,8 @@ class Board:
                 if isinstance(self.board[j][i], SmartGhost):
                     return self.board[j][i]
 
+    def setBoard(self, board):
+        self.board = board
 
 pygame.init()
 size = width, height = 470, 470
@@ -201,17 +206,14 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
-                board = pacman.move(board, -1, 0)
-                pacman_sprite.moveSprite(pacman.x, pacman.y)
+                pacman.move(board, -1, 0)
             elif event.key == pygame.K_RIGHT:
-                board = pacman.move(board, 1, 0)
-                pacman_sprite.moveSprite(pacman.x, pacman.y)
+                pacman.move(board, 1, 0)
             elif event.key == pygame.K_UP:
-                board = pacman.move(board, 0, -1)
-                pacman_sprite.moveSprite(pacman.x, pacman.y)
+                pacman.move(board, 0, -1)
             elif event.key == pygame.K_DOWN:
-                board = pacman.move(board, 0, 1)
-                pacman_sprite.moveSprite(pacman.x, pacman.y)
+                pacman.move(board, 0, 1)
+            pacman_sprite.moveSprite(pacman.x, pacman.y)
     screen.fill((0, 0, 0))
     all_sprites.draw(screen)
     board.render()
