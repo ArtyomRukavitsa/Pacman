@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QApplication, QInputDialog, QWidget, QTableWidgetIte
 import sys
 
 CHOOSE = ''  # Загрузить файл или новая генерация поля
-COUNT = 0 # Счет игрока
+COUNT = 0  # Счет игрока
 all_sprites = pygame.sprite.Group()
 banana = pygame.sprite.Group()
 
@@ -14,6 +14,19 @@ def lose():
     font = pygame.font.SysFont('Verdana', 60)
     text = font.render("Вы проиграли", 1, (100, 255, 100))
     screen.blit(text, (20, 30))
+
+
+def win():
+    font = pygame.font.SysFont('Verdana', 60)
+    text = font.render("Вы выиграли", 1, (100, 255, 100))
+    screen.blit(text, (20, 30))
+
+
+def count():
+    global COUNT
+    font = pygame.font.SysFont('Verdana', 20)
+    text = font.render(f"Счет: {COUNT}", 1, (100, 255, 100))
+    screen.blit(text, (350, 10))
 
 
 # Функция, отвечающая за загрузку изображения
@@ -150,13 +163,13 @@ class CreatureSprite(pygame.sprite.Sprite):
         self.image = load_image(image)
         self.mw = self.image.get_width()
         self.mh = self.image.get_height()
-        self.x = board.top + board.cell_size * x
-        self.y = board.left + board.cell_size * y
+        self.x = board.left + board.cell_size * x
+        self.y = board.top + board.cell_size * y
         self.rect = self.image.get_rect().move(self.x, self.y)
 
     def moveSprite(self, x, y):
-        self.x = board.top + board.cell_size * x
-        self.y = board.left + board.cell_size * y
+        self.x = board.left + board.cell_size * x
+        self.y = board.top + board.cell_size * y
         self.rect = self.image.get_rect().move(self.x, self.y)
 
 
@@ -167,14 +180,13 @@ class BananaSprite(pygame.sprite.Sprite):
         self.image = load_image(image)
         self.mw = self.image.get_width()
         self.mh = self.image.get_height()
-        self.x = board.top + board.cell_size * x
-        self.y = board.left + board.cell_size * y
+        self.x = board.left + board.cell_size * x
+        self.y = board.top + board.cell_size * y
         self.rect = self.image.get_rect().move(self.x, self.y)
 
     def update(self):
         if self.rect.colliderect(pacman_sprite.rect):
             self.kill()
-
 
 
 class Board:
@@ -183,7 +195,7 @@ class Board:
         self.height = height
         self.board = [[Empty(0, 0)] * width for _ in range(height)]
         self.left = 10
-        self.top = 10
+        self.top = 40
         self.cell_size = 30
         print(CHOOSE)
         if CHOOSE == 'Новое поле':
@@ -284,6 +296,7 @@ class Board:
                     elif data[j][i] == 'S':
                         self.board[j][i] = SmartGhost(i, j, 1)
 
+
 # Диалоговое окно
 class MyDialog(QWidget):
     def __init__(self):
@@ -301,11 +314,14 @@ class MyDialog(QWidget):
 
 
 def move_all_creatures(board, x, y):
-    pacman.move(board, x, y)  # идея: можно вернуть True, если набрал определенное количество очков (или False)
+    global COUNT
+    pacman.move(board, x, y)
+    if COUNT == 200:
+        return 'WIN'
     ghost.move(board)
     result = smartghost.move(board)
     if result:
-        return True
+        return 'LOSE'
 
 
 def save(board):
@@ -323,26 +339,40 @@ def cycle():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                pygame.quit()
+                sys.exit(0)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    if move_all_creatures(board, -1, 0):
+                    res = move_all_creatures(board, -1, 0)
+                    if res == 'LOSE':
                         return 'LOST'
+                    elif res == 'WIN':
+                        return 'WIN'
                 elif event.key == pygame.K_RIGHT:
-                    if move_all_creatures(board, 1, 0):
+                    res = move_all_creatures(board, 1, 0)
+                    if res == 'LOSE':
                         return 'LOST'
+                    elif res == 'WIN':
+                        return 'WIN'
                 elif event.key == pygame.K_UP:
-                    if move_all_creatures(board, 0, -1):
+                    res = move_all_creatures(board, 0, -1)
+                    if res == 'LOSE':
                         return 'LOST'
+                    elif res == 'WIN':
+                        return 'WIN'
                 elif event.key == pygame.K_DOWN:
-                    if move_all_creatures(board, 0, 1):
+                    res = move_all_creatures(board, 0, 1)
+                    if res == 'LOSE':
                         return 'LOST'
+                    elif res == 'WIN':
+                        return 'WIN'
                 elif event.key == pygame.K_s:
                     save(board)
                 pacman_sprite.moveSprite(pacman.x, pacman.y)
                 ghost_sprite.moveSprite(ghost.x, ghost.y)
                 smartghost_sprite.moveSprite(smartghost.x, smartghost.y)
         screen.fill((0, 0, 0))
+        count()
         all_sprites.draw(screen)
         banana.update()
         banana.draw(screen)
@@ -355,7 +385,7 @@ if __name__ == '__main__':
     ex = MyDialog()
 
     pygame.init()
-    size = width, height = 470, 470
+    size = width, height = 470, 500
     screen = pygame.display.set_mode(size)
     board = Board(15, 15)
 
@@ -374,7 +404,13 @@ if __name__ == '__main__':
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    break
+                    pygame.quit()
             lose()
             pygame.display.flip()
-    pygame.quit()
+    else:
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+            win()
+            pygame.display.flip()
