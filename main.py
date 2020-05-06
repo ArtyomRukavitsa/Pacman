@@ -87,7 +87,7 @@ class Pacman(Creature):
 
     def move(self, board, x, y):
         new_x, new_y = self.x + x, self.y + y
-        if 0 <= new_y <= 14 and 0 <= new_x <= 14:
+        if 0 <= new_y <= board.width and 0 <= new_x <= board.height:
             if isinstance(board.board[new_y][new_x], Empty):
                 board.board[new_y][new_x] = self
                 board.board[self.y][self.x] = Empty(self.x, self.y)
@@ -120,7 +120,7 @@ class Ghost(Creature):
                 new_y += 1
             else:
                 new_x -= 1
-            if 0 <= new_y <= 14 and 0 <= new_x <= 14:
+            if 0 <= new_y <= board.width and 0 <= new_x <= board.height:
                 if isinstance(board.board[new_y][new_x], Empty):
                     board.board[new_y][new_x] = self
                     board.board[self.y][self.x] = Empty(self.x, self.y)
@@ -185,7 +185,9 @@ class BananaSprite(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(self.x, self.y)
 
     def update(self):
-        if self.rect.colliderect(pacman_sprite.rect):
+        if self.rect.colliderect(pacman_sprite.rect) or \
+                self.rect.colliderect(ghost_sprite.rect) or \
+                self.rect.colliderect(smartghost_sprite.rect):
             self.kill()
 
 
@@ -197,7 +199,6 @@ class Board:
         self.left = 10
         self.top = 40
         self.cell_size = 30
-        print(CHOOSE)
         if CHOOSE == 'Новое поле':
             Board.generateBoard(self)
         else:
@@ -282,7 +283,6 @@ class Board:
     def openBoard(self):
         with open('game.txt', 'r', encoding='utf-8') as file:
             data = file.read().split('\n')
-            print(data)
             for i in range(self.width):
                 for j in range(self.height):
                     if data[j][i] == '0':
@@ -295,6 +295,10 @@ class Board:
                         self.board[j][i] = Ghost(i, j, 1)
                     elif data[j][i] == 'S':
                         self.board[j][i] = SmartGhost(i, j, 1)
+                    elif data[j][i] == '2':
+                        self.board[j][i] = Banana(i, j)
+            global COUNT
+            COUNT = int(data[-1])
 
 
 # Диалоговое окно
@@ -332,6 +336,8 @@ def save(board):
                 string += figure.draw()
             string += '\n'
         file.write(string)
+        global COUNT
+        file.write(str(COUNT))
 
 
 def cycle():
@@ -385,9 +391,9 @@ if __name__ == '__main__':
     ex = MyDialog()
 
     pygame.init()
-    size = width, height = 470, 500
+    size = width, height = 620, 650
     screen = pygame.display.set_mode(size)
-    board = Board(15, 15)
+    board = Board(20, 20)
 
     pacman = board.findPacman()
     ghost = board.findGhost()
@@ -404,13 +410,14 @@ if __name__ == '__main__':
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    pygame.quit()
+                    break
             lose()
             pygame.display.flip()
     else:
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    pygame.quit()
+                    break
             win()
             pygame.display.flip()
+    pygame.quit()
