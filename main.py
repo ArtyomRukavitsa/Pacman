@@ -37,11 +37,17 @@ class SuperClass:
 class Wall(SuperClass):
     def __init__(self, x, y):
         super().__init__(x, y)
+        
+    def draw(self):
+        return '1'
 
 
 class Empty(SuperClass):
     def __init__(self, x, y):
         super().__init__(x, y)
+
+    def draw(self):
+        return '0'
 
 
 class Creature(SuperClass):
@@ -65,6 +71,9 @@ class Pacman(Creature):
                 pass
         except IndexError:
             pass
+
+    def draw(self):
+        return 'P'
 
 
 class Ghost(Creature):
@@ -93,6 +102,9 @@ class Ghost(Creature):
             except IndexError:
                 continue
 
+    def draw(self):
+        return 'G'
+
 
 class SmartGhost(Creature):
     def __init__(self, x, y, v):
@@ -114,6 +126,9 @@ class SmartGhost(Creature):
         board.board[self.y][self.x] = Empty(self.x, self.y)
         self.x, self.y = new_x, new_y
         return False
+
+    def draw(self):
+        return 'S'
 
 
 class CreatureSprite(pygame.sprite.Sprite):
@@ -221,6 +236,16 @@ def move_all_creatures(board, x, y):
         return True
 
 
+def save(board):
+    string = ''
+    with open('game.txt', 'w', encoding='utf-8') as file:
+        for line in board.board:
+            for figure in line:
+                string += figure.draw()
+            string += '\n'
+        file.write(string)
+
+
 def cycle():
     running = True
     while running:
@@ -240,6 +265,8 @@ def cycle():
                 elif event.key == pygame.K_DOWN:
                     if move_all_creatures(board, 0, 1):
                         return 'LOST'
+                elif event.key == pygame.K_s:
+                    save(board)
                 pacman_sprite.moveSprite(pacman.x, pacman.y)
                 ghost_sprite.moveSprite(ghost.x, ghost.y)
                 smartghost_sprite.moveSprite(smartghost.x, smartghost.y)
@@ -266,5 +293,8 @@ result = cycle()
 if result == 'LOST':
     while True:
         lose()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
         pygame.display.flip()
 pygame.quit()
