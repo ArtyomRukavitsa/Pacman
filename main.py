@@ -1,8 +1,10 @@
 import pygame
 from random import randint
 import os
+from PyQt5.QtWidgets import QApplication, QInputDialog, QWidget, QTableWidgetItem
 import sys
 
+CHOOSE = ''  # Загрузить файл или новая генерация поля
 all_sprites = pygame.sprite.Group()
 
 
@@ -62,15 +64,11 @@ class Pacman(Creature):
 
     def move(self, board, x, y):
         new_x, new_y = self.x + x, self.y + y
-        try:
+        if 0 <= new_y <= 14 and 0 <= new_x <= 14:
             if isinstance(board.board[new_y][new_x], Empty):
                 board.board[new_y][new_x] = self
                 board.board[self.y][self.x] = Empty(self.x, self.y)
                 self.x, self.y = new_x, new_y
-            else:
-                pass
-        except IndexError:
-            pass
 
     def draw(self):
         return 'P'
@@ -156,7 +154,11 @@ class Board:
         self.left = 10
         self.top = 10
         self.cell_size = 30
-        Board.generateBoard(self)
+        print(CHOOSE)
+        if CHOOSE == 'Новое поле':
+            Board.generateBoard(self)
+        else:
+            Board.openBoard(self)
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):
@@ -167,16 +169,12 @@ class Board:
     def render(self):
         for i in range(self.width):
             for j in range(self.height):
-                arg = 1
-                color = (255, 255, 255)
-                pygame.draw.rect(screen, color,
+                pygame.draw.rect(screen, (255, 255, 255),
                                  (self.left + i * self.cell_size,
                                   self.top + j * self.cell_size,
-                                  self.cell_size, self.cell_size), arg)
+                                  self.cell_size, self.cell_size), 1)
                 if isinstance(self.board[j][i], Wall):
-                    color = (255, 0, 255)
-                    arg = 0
-                    pygame.draw.rect(screen, color, (self.left + i * self.cell_size + 1,
+                    pygame.draw.rect(screen, (255, 0, 255), (self.left + i * self.cell_size + 1,
                                                      self.top + j * self.cell_size + 1, self.cell_size - 2,
                                                      self.cell_size - 2), 0)
 
@@ -224,8 +222,37 @@ class Board:
                 if isinstance(self.board[j][i], SmartGhost):
                     return self.board[j][i]
 
-    def setBoard(self, board):
-        self.board = board
+    def openBoard(self):
+        with open('game.txt', 'r', encoding='utf-8') as file:
+            data = file.read().split('\n')
+            print(data)
+            for i in range(self.width):
+                for j in range(self.height):
+                    if data[j][i] == '0':
+                        self.board[j][i] = Empty(i, j)
+                    elif data[j][i] == '1':
+                        self.board[j][i] = Wall(i, j)
+                    elif data[j][i] == 'P':
+                        self.board[j][i] = Pacman(i, j, 1)
+                    elif data[j][i] == 'G':
+                        self.board[j][i] = Ghost(i, j, 1)
+                    elif data[j][i] == 'S':
+                        self.board[j][i] = SmartGhost(i, j, 1)
+
+# Диалоговое окно
+class MyDialog(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        global CHOOSE
+        CHOOSE, okBtnPressed = QInputDialog.getItem(self, "Новая игра",
+                                               "Выберете поле",
+                                               ("Последнее сохранение", "Новое поле"),
+                                               1, False)
+        if okBtnPressed:
+            return
 
 
 def move_all_creatures(board, x, y):
@@ -255,15 +282,19 @@ def cycle():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     if move_all_creatures(board, -1, 0):
+                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_RIGHT:
                     if move_all_creatures(board, 1, 0):
+                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_UP:
                     if move_all_creatures(board, 0, -1):
+                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_DOWN:
                     if move_all_creatures(board, 0, 1):
+                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_s:
                     save(board)
@@ -277,6 +308,8 @@ def cycle():
 
 
 
+app = QApplication(sys.argv)
+ex = MyDialog()
 pygame.init()
 size = width, height = 470, 470
 screen = pygame.display.set_mode(size)
