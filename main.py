@@ -5,7 +5,9 @@ from PyQt5.QtWidgets import QApplication, QInputDialog, QWidget, QTableWidgetIte
 import sys
 
 CHOOSE = ''  # Загрузить файл или новая генерация поля
+COUNT = 0 # Счет игрока
 all_sprites = pygame.sprite.Group()
+banana = pygame.sprite.Group()
 
 
 def lose():
@@ -52,6 +54,14 @@ class Empty(SuperClass):
         return '0'
 
 
+class Banana(SuperClass):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+
+    def draw(self):
+        return '2'
+
+
 class Creature(SuperClass):
     def __init__(self, x, y, v):
         super().__init__(x, y)
@@ -69,6 +79,12 @@ class Pacman(Creature):
                 board.board[new_y][new_x] = self
                 board.board[self.y][self.x] = Empty(self.x, self.y)
                 self.x, self.y = new_x, new_y
+            elif isinstance(board.board[new_y][new_x], Banana):
+                global COUNT
+                board.board[new_y][new_x] = self
+                board.board[self.y][self.x] = Empty(self.x, self.y)
+                self.x, self.y = new_x, new_y
+                COUNT += 100
 
     def draw(self):
         return 'P'
@@ -91,14 +107,12 @@ class Ghost(Creature):
                 new_y += 1
             else:
                 new_x -= 1
-            try:
+            if 0 <= new_y <= 14 and 0 <= new_x <= 14:
                 if isinstance(board.board[new_y][new_x], Empty):
                     board.board[new_y][new_x] = self
                     board.board[self.y][self.x] = Empty(self.x, self.y)
                     self.x, self.y = new_x, new_y
                     break
-            except IndexError:
-                continue
 
     def draw(self):
         return 'G'
@@ -144,6 +158,23 @@ class CreatureSprite(pygame.sprite.Sprite):
         self.x = board.top + board.cell_size * x
         self.y = board.left + board.cell_size * y
         self.rect = self.image.get_rect().move(self.x, self.y)
+
+
+class BananaSprite(pygame.sprite.Sprite):
+    def __init__(self, board, image, x, y):
+        super().__init__(banana)
+        self.x, self.y = x, y
+        self.image = load_image(image)
+        self.mw = self.image.get_width()
+        self.mh = self.image.get_height()
+        self.x = board.top + board.cell_size * x
+        self.y = board.left + board.cell_size * y
+        self.rect = self.image.get_rect().move(self.x, self.y)
+
+    def update(self):
+        if self.rect.colliderect(pacman_sprite.rect):
+            self.kill()
+
 
 
 class Board:
@@ -202,7 +233,13 @@ class Board:
         while not isinstance(self.board[y][x], Empty):
             x = randint(0, self.width - 1)
             y = randint(0, self.height - 1)
-        self.board[y][x] = SmartGhost( x, y, 1)
+        self.board[y][x] = SmartGhost(x, y, 1)
+
+        for i in range(5):
+            while not isinstance(self.board[y][x], Empty):
+                x = randint(0, self.width - 1)
+                y = randint(0, self.height - 1)
+            self.board[y][x] = Banana(x, y)
 
     def findPacman(self):
         for i in range(self.width):
@@ -221,6 +258,14 @@ class Board:
             for j in range(self.height):
                 if isinstance(self.board[j][i], SmartGhost):
                     return self.board[j][i]
+
+    def findBanana(self):
+        bananas = []
+        for i in range(self.width):
+            for j in range(self.height):
+                if isinstance(self.board[j][i], Banana):
+                    bananas.append(self.board[j][i])
+        return bananas
 
     def openBoard(self):
         with open('game.txt', 'r', encoding='utf-8') as file:
@@ -282,19 +327,15 @@ def cycle():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     if move_all_creatures(board, -1, 0):
-                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_RIGHT:
                     if move_all_creatures(board, 1, 0):
-                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_UP:
                     if move_all_creatures(board, 0, -1):
-                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_DOWN:
                     if move_all_creatures(board, 0, 1):
-                        running = False
                         return 'LOST'
                 elif event.key == pygame.K_s:
                     save(board)
@@ -303,31 +344,37 @@ def cycle():
                 smartghost_sprite.moveSprite(smartghost.x, smartghost.y)
         screen.fill((0, 0, 0))
         all_sprites.draw(screen)
+        banana.update()
+        banana.draw(screen)
         board.render()
         pygame.display.flip()
 
 
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = MyDialog()
 
-app = QApplication(sys.argv)
-ex = MyDialog()
-pygame.init()
-size = width, height = 470, 470
-screen = pygame.display.set_mode(size)
-board = Board(15, 15)
-pacman = board.findPacman()
-ghost = board.findGhost()
-smartghost = board.findSmartGhost()
-pacman_sprite = CreatureSprite(board, 'pacman.png', pacman.x, pacman.y, 1)
-ghost_sprite = CreatureSprite(board, 'ghost.png', ghost.x, ghost.y, 1)
-smartghost_sprite = CreatureSprite(board, 'smartghost.png', smartghost.x, smartghost.y, 1)
+    pygame.init()
+    size = width, height = 470, 470
+    screen = pygame.display.set_mode(size)
+    board = Board(15, 15)
 
+    pacman = board.findPacman()
+    ghost = board.findGhost()
+    smartghost = board.findSmartGhost()
+    bananas = board.findBanana()
 
-result = cycle()
-if result == 'LOST':
-    while True:
-        lose()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-        pygame.display.flip()
-pygame.quit()
+    pacman_sprite = CreatureSprite(board, 'pacman.png', pacman.x, pacman.y, 1)
+    ghost_sprite = CreatureSprite(board, 'ghost.png', ghost.x, ghost.y, 1)
+    smartghost_sprite = CreatureSprite(board, 'smartghost.png', smartghost.x, smartghost.y, 1)
+    for b in bananas:
+        BananaSprite(board, 'food.jpg', b.x, b.y)
+    result = cycle()
+    if result == 'LOST':
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    break
+            lose()
+            pygame.display.flip()
+    pygame.quit()
